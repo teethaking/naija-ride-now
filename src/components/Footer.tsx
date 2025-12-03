@@ -130,6 +130,11 @@ const Footer = () => {
             </a>
           </div>
         </div>
+        
+        {/* Created by */}
+        <div className="border-t border-background/10 mt-8 pt-6 text-center">
+          <p className="text-accent font-semibold text-lg">Created by Tee</p>
+        </div>
       </div>
     </footer>
   );
