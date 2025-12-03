@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin, Navigation, Clock, Car, Zap, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const rideTypes = [
   {
@@ -36,8 +39,22 @@ const RideBookingCard = () => {
   const [pickup, setPickup] = useState("");
   const [destination, setDestination] = useState("");
   const [selectedRide, setSelectedRide] = useState("economy");
+  const [isBooking, setIsBooking] = useState(false);
+  
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const handleBookRide = () => {
+  const handleBookRide = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to book a ride.",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
     if (!pickup || !destination) {
       toast({
         title: "Missing Information",
@@ -46,11 +63,36 @@ const RideBookingCard = () => {
       });
       return;
     }
+
+    setIsBooking(true);
     
-    toast({
-      title: "Finding your driver...",
-      description: `Searching for ${selectedRide} rides from ${pickup} to ${destination}`,
+    const selectedRideType = rideTypes.find(r => r.id === selectedRide);
+    
+    const { error } = await supabase.from("ride_orders").insert({
+      user_id: user.id,
+      pickup_location: pickup,
+      destination: destination,
+      ride_type: selectedRide,
+      estimated_price: selectedRideType?.price || "",
+      status: "pending",
     });
+
+    if (error) {
+      toast({
+        title: "Booking failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Ride booked! 🚗",
+        description: `Finding your ${selectedRide} driver from ${pickup} to ${destination}`,
+      });
+      setPickup("");
+      setDestination("");
+    }
+    
+    setIsBooking(false);
   };
 
   return (
@@ -133,8 +175,9 @@ const RideBookingCard = () => {
           size="xl" 
           className="w-full"
           onClick={handleBookRide}
+          disabled={isBooking}
         >
-          Request Ride
+          {isBooking ? "Booking..." : user ? "Request Ride" : "Sign in to Book"}
         </Button>
 
         {/* Payment Methods */}
